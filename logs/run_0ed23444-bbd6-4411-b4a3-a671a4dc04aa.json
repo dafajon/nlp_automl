@@ -1,0 +1,1 @@
+[{"score": 0.34150864606960085, "params": {"preprocessing_tf_method": "raw", "preprocessing_idf_method": "probabilistic", "model": "pa", "hyper_C_sg": 3.34804219694653e-08, "hyper_average_sg": false, "hyper_class_weight_sg": null}}]

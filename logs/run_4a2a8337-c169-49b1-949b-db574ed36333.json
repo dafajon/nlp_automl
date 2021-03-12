@@ -1,0 +1,1 @@
+[{"score": 0.3604627557843932, "params": {"preprocessing_tf_method": "freq", "preprocessing_idf_method": "smooth", "model": "logreg", "hyper_C_lr": 2.327679992453438, "hyper_class_weight_lr": "balanced"}}]
