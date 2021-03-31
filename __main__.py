@@ -153,6 +153,7 @@ def optimize(trial, data):
     f1_macro = make_scorer(f1_score, average="macro")
 
     score = cross_val_score(classifier, X, y, n_jobs=-1, cv=3,  scoring=f1_macro)
+
     return score.mean()
 
 
@@ -166,19 +167,27 @@ def log_best_callback(study, trial, run_id):
                     "params": best_params}], jfile)
 
 
+def log_progress_callback(study, trial, run_id, total_trials):
+    print(trial.number / total_trials * 100)
+    print(trial.params)
+    print(trial.value)
+
+
 @inference
 @train_optimal
 def run():
+    total_trials = 10
     run_id = str(uuid4())
     logger.add(f"logs/run_{run_id}.log")
 
     df = load_data("data/train.csv").sample(100)
     objective = partial(optimize, data=df)
-    callback = partial(log_best_callback, run_id=run_id)
+    best_callback = partial(log_best_callback, run_id=run_id)
+    progress_callback = partial(log_progress_callback, run_id=run_id, total_trials=total_trials)
 
     try:
         study = optuna.create_study(direction="maximize")
-        study.optimize(objective, n_trials=10, callbacks=[callback])
+        study.optimize(objective, n_trials=total_trials, callbacks=[best_callback, progress_callback])
 
         console.log(study.best_params)
 
