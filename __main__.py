@@ -1,4 +1,4 @@
-from sadedegel.extension.sklearn import OnlinePipeline, TfidfVectorizer
+from sadedegel.extension.sklearn import OnlinePipeline, TfidfVectorizer, Text2Doc
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.metrics import make_scorer, f1_score
 
@@ -97,13 +97,15 @@ def train_optimal(runner):
                       "sgd": SGDClassifier,
                       "logreg": LogisticRegression}
 
+        text2doc = Text2Doc(tokenizer="icu")
         preprocessor = TfidfVectorizer(**params["preprocessing_params"])
         model = model_dict[modelname](**params["model_params"])
 
-        pipeline = OnlinePipeline([("tfidf", preprocessor),
+        pipeline = OnlinePipeline([("text2doc", text2doc),
+                                   ("tfidf", preprocessor),
                                    ("model", model)])
 
-        df = load_data("data/train.csv").sample(100)
+        df = load_data("data/cagri_df.csv.gz").sample(100)
         pipeline.fit(df["text"], df["class"])
 
         joblib.dump(pipeline, f"models/pipeline_{run_id}.joblib")
@@ -148,11 +150,14 @@ def optimize(trial, data):
             "class_weight": trial.suggest_categorical("hyper_class_weight_sg", ["balanced", None])
         }
 
-    X, y = tfidf.transform(data["text"]), data["class"]
+    transformed_text = Text2Doc(tokenizer="icu").transform(data["text"])
+    X, y = tfidf.transform(transformed_text), data["class"]
     classifier = model(**params)
     f1_macro = make_scorer(f1_score, average="macro")
 
-    score = cross_val_score(classifier, X, y, n_jobs=-1, cv=3,  scoring=f1_macro)
+    score = cross_val_score(classifier, X, y, n_jobs=-1,
+                            cv=StratifiedKFold(n_splits=3, shuffle=True, random_state=42),
+                            scoring=f1_macro)
 
     return score.mean()
 
@@ -173,14 +178,14 @@ def log_progress_callback(study, trial, run_id, total_trials):
     print(trial.value)
 
 
-@inference
+#@inference
 @train_optimal
 def run():
-    total_trials = 10
+    total_trials = 2
     run_id = str(uuid4())
     logger.add(f"logs/run_{run_id}.log")
 
-    df = load_data("data/train.csv").sample(100)
+    df = load_data("data/cagri_df.csv.gz").sample(100)
     objective = partial(optimize, data=df)
     best_callback = partial(log_best_callback, run_id=run_id)
     progress_callback = partial(log_progress_callback, run_id=run_id, total_trials=total_trials)
